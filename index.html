@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Auction Elimination Wheel PRO</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        .container { display: flex; gap: 30px; margin-top: 20px; align-items: flex-start; }
+        
+        /* Колесо та стрілка зверху */
+        .wheel-box { position: relative; width: 500px; height: 500px; }
+        #canvas { border: 5px solid #333; border-radius: 50%; background: #1e1e1e; transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); }
+        
+        .pointer { 
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 20px solid transparent; 
+            border-right: 20px solid transparent; 
+            border-top: 40px solid #ff4757; 
+            z-index: 10;
+        }
+
+        /* Керування */
+        .controls { background: #1e1e1e; padding: 20px; border-radius: 10px; width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; border-radius: 5px; border: none; outline: none; }
+        input { background: #333; color: white; }
+        
+        .lot-item { display: flex; align-items: center; gap: 8px; background: #2c2c2c; margin-top: 5px; padding: 8px; border-radius: 5px; border-left: 4px solid transparent; }
+        .color-input { width: 30px; height: 30px; border: none; cursor: pointer; background: none; padding: 0; }
+        
+        .btn-spin { background: #1e90ff; color: white; font-size: 1.2rem; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        .btn-spin:disabled { background: #555; cursor: not-allowed; }
+
+        /* Повідомлення на сайті */
+        #status-msg {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            min-height: 20px;
+            background: #2c2c2c;
+            border: 1px solid #444;
+        }
+        .eliminated { color: #ff4757; animation: shake 0.5s; }
+        .winner { color: #2ed573; font-size: 1.5rem; border-color: #2ed573 !important; }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            100% { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Elimination Auction Wheel</h1>
+
+    <div class="container">
+        <div class="wheel-box">
+            <div class="pointer"></div>
+            <canvas id="canvas" width="500" height="500"></canvas>
+            <button id="spinBtn" class="btn-spin" onclick="spin()">КРУТИТИ</button>
+            <div id="status-msg">Додайте учасників, щоб почати</div>
+        </div>
+
+        <div class="controls">
+            <h3>Новий лот</h3>
+            <input type="text" id="lotName" placeholder="Назва">
+            <input type="number" id="lotVal" placeholder="Ціна (вага)">
+            <div style="display: flex; align-items: center; gap: 10px; margin: 5px 0;">
+                <span style="font-size: 0.9rem;">Колір:</span>
+                <input type="color" id="lotColor" class="color-input">
+            </div>
+            <button onclick="addLot()" style="background:#2ed573; color:white; font-weight:bold;">ДОДАТИ</button>
+
+            <div id="lotList" style="margin-top: 20px; max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        let lots = JSON.parse(localStorage.getItem('elim_lots')) || [];
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusMsg = document.getElementById('status-msg');
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        function setRandomColor() {
+            const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#eccc68', '#70a1ff', '#5352ed', '#ff6b81', '#10ac84'];
+            document.getElementById('lotColor').value = colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function addLot() {
+            const nameInput = document.getElementById('lotName');
+            const valInput = document.getElementById('lotVal');
+            const colorInput = document.getElementById('lotColor');
+
+            const name = nameInput.value;
+            const val = parseFloat(valInput.value);
+            const color = colorInput.value;
+
+            if (name && val > 0) {
+                lots.push({ name, val, color });
+                // Очищення полів
+                nameInput.value = '';
+                valInput.value = '';
+                setRandomColor();
+                save();
+                statusMsg.innerText = "Лот додано!";
+            }
+        }
+
+        function save() {
+            localStorage.setItem('elim_lots', JSON.stringify(lots));
+            draw();
+            renderList();
+        }
+
+        function renderList() {
+            const list = document.getElementById('lotList');
+            list.innerHTML = '<h4>Учасники:</h4>';
+            lots.forEach((lot, i) => {
+                list.innerHTML += `
+                    <div class="lot-item" style="border-left-color: ${lot.color}">
+                        <input type="color" value="${lot.color}" onchange="updateLotColor(${i}, this.value)" class="color-input" style="width:20px; height:20px;">
+                        <span style="flex:1; font-size:0.9rem;">${lot.name} (<b>${lot.val}</b>)</span>
+                        <button onclick="remove(${i})" style="width:auto; background:none; color:#ff4757; border:none; cursor:pointer;">✖</button>
+                    </div>`;
+            });
+        }
+
+        function updateLotColor(index, newColor) {
+            lots[index].color = newColor;
+            save();
+        }
+
+        function remove(i) {
+            lots.splice(i, 1);
+            save();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 500, 500);
+            if (lots.length === 0) return;
+
+            const inverseTotal = lots.reduce((sum, l) => sum + (1 / l.val), 0);
+            let startAngle = -Math.PI / 2; // Починаємо зверху (-90 градусів)
+
+            lots.forEach(lot => {
+                const sliceAngle = ((1 / lot.val) / inverseTotal) * 2 * Math.PI;
+                
+                ctx.beginPath();
+                ctx.fillStyle = lot.color;
+                ctx.moveTo(250, 250);
+                ctx.arc(250, 250, 240, startAngle, startAngle + sliceAngle);
+                ctx.fill();
+                ctx.strokeStyle = "#121212";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Текст
+                ctx.save();
+                ctx.translate(250, 250);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "right";
+                ctx.font = "bold 14px Arial";
+                ctx.fillText(lot.name, 230, 5);
+                ctx.restore();
+
+                startAngle += sliceAngle;
+            });
+        }
+
+        function spin() {
+            if (lots.length < 2 || isSpinning) return;
+            
+            isSpinning = true;
+            document.getElementById('spinBtn').disabled = true;
+            statusMsg.innerText = "Колесо обертається...";
+            statusMsg.className = "";
+
+            const extraDegrees = Math.floor(Math.random() * 360) + 3600; 
+            currentRotation += (extraDegrees * Math.PI) / 180;
+            
+            canvas.style.transform = `rotate(-${currentRotation}rad)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                document.getElementById('spinBtn').disabled = false;
+                determineEliminated();
+            }, 4100);
+        }
+
+        function determineEliminated() {
+            const inverseTotal = lots.reduce((sum, l) => sum + (1 / l.val), 0);
+            
+            // Стрілка зверху — це точка 0 відносно нашого зміщення малювання (-Math.PI/2)
+            let normalizedRotation = (currentRotation) % (2 * Math.PI);
+            let currentAngle = 0;
+
+            for (let i = 0; i < lots.length; i++) {
+                const sliceAngle = ((1 / lots[i].val) / inverseTotal) * 2 * Math.PI;
+                if (normalizedRotation >= currentAngle && normalizedRotation < currentAngle + sliceAngle) {
+                    const eliminatedName = lots[i].name;
+                    
+                    // Оновлення статусу на сайті
+                    statusMsg.innerHTML = `Вибуває: <span class="eliminated">${eliminatedName}</span>`;
+                    statusMsg.className = "eliminated";
+
+                    // Видалення через невелику паузу, щоб юзер побачив результат
+                    setTimeout(() => {
+                        lots.splice(i, 1);
+                        save();
+                        
+                        if (lots.length === 1) {
+                            statusMsg.innerHTML = `ПЕРЕМОЖЕЦЬ: <span class="winner">${lots[0].name}</span>`;
+                            statusMsg.className = "winner";
+                            document.getElementById('spinBtn').disabled = true;
+                        }
+                    }, 2000);
+                    
+                    break;
+                }
+                currentAngle += sliceAngle;
+            }
+        }
+
+        window.onload = () => {
+            setRandomColor();
+            save();
+        };
+    </script>
+</body>
+</html>
