@@ -3,180 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auction Elimination Wheel PRO</title>
+    <title>Auction Wheel PRO App</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #121212; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-            padding: 20px; 
+        :root {
+            --bg-color: #121212;
+            --sidebar-color: #1e1e1e;
+            --accent-color: #1e90ff;
+            --text-color: #ffffff;
+            --item-bg: #262626;
         }
 
-        .container { 
-            display: flex; 
-            gap: 150px; /* Відстань між колесом та панеллю */
-            margin-top: 40px; 
-            align-items: flex-start; 
-            max-width: 1200px; 
-        }
-        
-        .wheel-box { 
-            position: relative; 
-            width: 500px; 
-            height: 500px; 
-            flex-shrink: 0;
-        }
-        
-        /* Налаштування анімації: 9 секунд, в'язке докочування без повернення */
-        #canvas { 
-            border: 6px solid #333; 
-            border-radius: 50%; 
-            background: #1e1e1e; 
-            transition: transform 9s cubic-bezier(0.2, 0.8, 0, 1); 
-            box-shadow: 0 0 40px rgba(0,0,0,0.6);
-        }
-        
-        /* Стрілка зверху */
-        .pointer { 
-            position: absolute; 
-            top: -25px; 
-            left: 50%; 
-            transform: translateX(-50%);
-            width: 0; 
-            height: 0; 
-            border-left: 20px solid transparent; 
-            border-right: 20px solid transparent; 
-            border-top: 45px solid #ff4757; 
-            z-index: 10;
-            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        /* Панель керування праворуч */
-        .controls { 
-            background: #1e1e1e; 
-            padding: 25px; 
-            border-radius: 12px; 
-            width: 350px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.6); 
-            border: 1px solid #333;
+        /* --- SIDEBAR MENU --- */
+        .sidebar {
+            width: 80px;
+            background: var(--sidebar-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            border-right: 1px solid #333;
+            z-index: 100;
         }
 
-        h1 { color: #1e90ff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        h3 { margin-top: 0; color: #ccc; }
+        .nav-item {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s;
+            font-size: 24px;
+            background: transparent;
+        }
+
+        .nav-item:hover { background: #333; }
+        .nav-item.active { background: var(--accent-color); color: white; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            flex: 1;
+            position: relative;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+            width: 100%;
+            max-width: 1000px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- PAGE 1: EDITING --- */
+        .edit-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--sidebar-color);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
         input, button { 
-            padding: 12px; 
-            margin: 8px 0; 
-            width: 100%; 
-            box-sizing: border-box; 
-            border-radius: 6px; 
-            border: none; 
-            outline: none; 
-            font-size: 1rem; 
+            padding: 14px; margin: 10px 0; width: 100%; box-sizing: border-box; 
+            border-radius: 8px; border: none; outline: none; font-size: 1rem; 
         }
 
         input { background: #2c2c2c; color: white; border: 1px solid #444; }
-        input:focus { border-color: #1e90ff; }
         
         .lot-item { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            background: #262626; 
-            margin-top: 6px; 
-            padding: 10px; 
-            border-radius: 6px; 
-            border-left: 5px solid transparent;
+            display: flex; align-items: center; gap: 10px; background: var(--item-bg); 
+            margin-top: 8px; padding: 12px; border-radius: 8px; 
         }
 
-        .color-input { width: 30px; height: 30px; border: none; cursor: pointer; background: none; padding: 0; flex-shrink: 0; }
-        
+        .color-dot { width: 25px; height: 25px; border-radius: 6px; border: none; cursor: pointer; padding: 0; background: none; }
+
+        /* --- PAGE 2: GAME (WHEEL) --- */
+        .game-page {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .game-page.active { display: flex; }
+
+        .wheel-box {
+            position: relative;
+            width: 700px;
+            height: 700px;
+            margin-bottom: 30px;
+        }
+
+        #canvas {
+            border: 8px solid #333;
+            border-radius: 50%;
+            background: #1e1e1e;
+            transition: transform 9s cubic-bezier(0.2, 0.8, 0, 1);
+            box-shadow: 0 0 50px rgba(0,0,0,0.7);
+            width: 100%;
+            height: 100%;
+        }
+
+        .pointer {
+            position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 25px solid transparent; border-right: 25px solid transparent; 
+            border-top: 55px solid #ff4757; z-index: 10;
+        }
+
         .btn-spin { 
-            background: #1e90ff; 
-            color: white; 
-            font-size: 1.4rem; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 20px; 
-            transition: all 0.3s;
+            background: var(--accent-color); color: white; font-size: 1.6rem; 
+            font-weight: bold; cursor: pointer; width: 300px; 
+            box-shadow: 0 5px 15px rgba(30, 144, 255, 0.4);
         }
-
-        .btn-spin:hover:not(:disabled) { background: #3742fa; transform: translateY(-2px); }
-        .btn-spin:disabled { background: #333; color: #666; cursor: not-allowed; opacity: 0.8; }
-
-        .btn-reset { background: #ff4757; color: white; font-weight: bold; cursor: pointer; margin-top: 15px; }
-        .btn-reset:hover { background: #ff6b81; }
+        .btn-spin:disabled { background: #333; cursor: not-allowed; opacity: 0.6; }
 
         #status-msg {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.1rem;
-            background: #252525;
-            border: 1px solid #333;
-            min-height: 25px;
+            margin-top: 20px; font-size: 1.4rem; font-weight: bold;
+            background: rgba(255,255,255,0.05); padding: 15px 40px; border-radius: 50px;
         }
 
-        .eliminated { color: #ff4757; animation: pulse 0.5s infinite alternate; }
-        .winner-text { color: #2ed573; font-size: 1.6rem; }
+        .eliminated { color: #ff4757; }
+        .winner-text { color: #2ed573; font-size: 2rem; }
 
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
-        }
+        .btn-reset { background: #ff4757; color: white; margin-top: 20px; cursor: pointer; }
 
-        #lotList { margin-top: 15px; max-height: 380px; overflow-y: auto; padding-right: 5px; }
-        #lotList::-webkit-scrollbar { width: 5px; }
-        #lotList::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>Elimination Auction Wheel</h1>
+    <div class="sidebar">
+        <div class="nav-item active" onclick="showPage('edit', this)" title="Учасники">📝</div>
+        <div class="nav-item" onclick="showPage('game', this)" title="Колесо">🎡</div>
+    </div>
 
-    <div class="container">
-        <div class="wheel-box">
-            <div class="pointer"></div>
-            <canvas id="canvas" width="500" height="500"></canvas>
-            <button id="spinBtn" class="btn-spin" onclick="spin()">КРУТИТИ</button>
-            <div id="status-msg">Додайте мінімум 2 лоти</div>
-        </div>
-
-        <div class="controls">
-            <h3>Додати учасника</h3>
-            <input type="text" id="lotName" placeholder="Назва (н-р: Фільм)">
-            <input type="number" id="lotVal" placeholder="Ціна / Вага">
-            <div style="display: flex; align-items: center; gap: 12px; margin: 5px 0;">
-                <span style="font-size: 0.9rem; color: #aaa;">Колір:</span>
-                <input type="color" id="lotColor" class="color-input">
+    <div class="main-content">
+        
+        <div id="edit-page" class="page active">
+            <div class="edit-container">
+                <h3>👥 Керування учасниками</h3>
+                <input type="text" id="lotName" placeholder="Назва лота">
+                <input type="number" id="lotVal" placeholder="Вага (ціна)">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 0.9rem; color: #888;">Колір:</span>
+                    <input type="color" id="lotColor" class="color-dot">
+                </div>
+                <button onclick="addLot()" style="background: #2ed573; color: white; font-weight: bold;">ДОДАТИ</button>
+                
+                <div id="lotList" style="margin-top: 20px;"></div>
+                <button class="btn-reset" onclick="resetGame()" style="font-size: 0.9rem; padding: 10px;">Скинути все</button>
             </div>
-            <button onclick="addLot()" style="background:#2ed573; color:white; font-weight:bold;">ДОДАТИ</button>
-
-            <div id="lotList"></div>
-            <button class="btn-reset" onclick="resetGame()">СКИНУТИ ВСЕ</button>
         </div>
+
+        <div id="game-page" class="page game-page">
+            <div class="wheel-box">
+                <div class="pointer"></div>
+                <canvas id="canvas" width="700" height="700"></canvas>
+            </div>
+            <button id="spinBtn" class="btn-spin" onclick="spin()">КРУТИТИ</button>
+            <div id="status-msg">Додайте учасників</div>
+        </div>
+
     </div>
 
     <script>
-        let lots = JSON.parse(localStorage.getItem('elim_pro_v3')) || [];
+        let lots = JSON.parse(localStorage.getItem('elim_app_v4')) || [];
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const statusMsg = document.getElementById('status-msg');
         const spinBtn = document.getElementById('spinBtn');
         
-        // Палітра кольорів
         const baseColors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#eccc68', '#70a1ff', '#5352ed', '#ff6b81', '#10ac84', '#00d2d3', '#54a0ff', '#5f27cd'];
         let availableColors = [...baseColors];
 
         let currentRotation = 0;
         let isProcessing = false;
+
+        // Навігація
+        function showPage(pageId, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(pageId + '-page').classList.add('active');
+            element.classList.add('active');
+            
+            if (pageId === 'game') draw();
+        }
 
         function getUniqueColor() {
             if (availableColors.length === 0) availableColors = [...baseColors];
@@ -189,74 +228,61 @@
         }
 
         function addLot() {
-            if (isProcessing) return;
-            const nameInput = document.getElementById('lotName');
-            const valInput = document.getElementById('lotVal');
-            const colorInput = document.getElementById('lotColor');
-
-            const name = nameInput.value.trim();
-            const val = parseFloat(valInput.value);
-            const color = colorInput.value;
+            const nameI = document.getElementById('lotName');
+            const valI = document.getElementById('lotVal');
+            const name = nameI.value.trim();
+            const val = parseFloat(valI.value);
+            const color = document.getElementById('lotColor').value;
 
             if (name && val > 0) {
                 lots.push({ name, val, color });
-                nameInput.value = '';
-                valInput.value = '';
+                nameI.value = ''; valI.value = '';
                 setRandomColor();
                 save();
-                statusMsg.innerText = "Лот додано до списку";
-                spinBtn.disabled = (lots.length < 2);
             }
         }
 
         function resetGame() {
-            if (confirm("Ви впевнені, що хочете видалити всі лоти?")) {
-                lots = [];
-                availableColors = [...baseColors];
-                isProcessing = false;
-                save();
-                setRandomColor();
-                statusMsg.innerText = "Додайте лоти, щоб почати";
-                spinBtn.disabled = true;
+            if (confirm("Очистити все?")) {
+                lots = []; save(); setRandomColor();
             }
         }
 
         function save() {
-            localStorage.setItem('elim_pro_v3', JSON.stringify(lots));
-            draw();
+            localStorage.setItem('elim_app_v4', JSON.stringify(lots));
             renderList();
+            draw();
         }
 
         function renderList() {
             const list = document.getElementById('lotList');
-            list.innerHTML = '<h4>Учасники:</h4>';
+            list.innerHTML = '<h4>Список:</h4>';
             lots.forEach((lot, i) => {
                 list.innerHTML += `
-                    <div class="lot-item" style="border-left-color: ${lot.color}">
-                        <input type="color" value="${lot.color}" onchange="updateLotColor(${i}, this.value)" class="color-input" style="width:22px; height:22px;">
-                        <span style="flex:1; font-size:0.95rem;">${lot.name} (<b>${lot.val}</b>)</span>
-                        <button onclick="removeLot(${i})" style="width:auto; background:none; color:#ff4757; border:none; cursor:pointer; font-weight:bold;">✖</button>
+                    <div class="lot-item" style="border-left: 4px solid ${lot.color}">
+                        <input type="color" value="${lot.color}" onchange="updateLotColor(${i}, this.value)" class="color-dot">
+                        <span style="flex:1">${lot.name} (${lot.val})</span>
+                        <button onclick="removeLot(${i})" style="width:auto; background:none; color:#ff4757; border:none; cursor:pointer;">✖</button>
                     </div>`;
             });
+            spinBtn.disabled = lots.length < 2;
         }
 
-        function updateLotColor(index, newColor) {
-            lots[index].color = newColor;
+        function updateLotColor(i, color) {
+            lots[i].color = color;
             save();
         }
 
         function removeLot(i) {
-            if (isProcessing) return;
             lots.splice(i, 1);
             save();
-            spinBtn.disabled = (lots.length < 2);
         }
 
         function draw() {
-            ctx.clearRect(0, 0, 500, 500);
+            ctx.clearRect(0, 0, 700, 700);
             if (lots.length === 0) {
                 ctx.fillStyle = "#222";
-                ctx.beginPath(); ctx.arc(250, 250, 240, 0, 2 * Math.PI); ctx.fill();
+                ctx.beginPath(); ctx.arc(350, 350, 340, 0, 2 * Math.PI); ctx.fill();
                 return;
             }
 
@@ -267,21 +293,19 @@
                 const sliceAngle = ((1 / lot.val) / inverseTotal) * 2 * Math.PI;
                 ctx.beginPath();
                 ctx.fillStyle = lot.color;
-                ctx.moveTo(250, 250);
-                ctx.arc(250, 250, 240, startAngle, startAngle + sliceAngle);
+                ctx.moveTo(350, 350);
+                ctx.arc(350, 350, 340, startAngle, startAngle + sliceAngle);
                 ctx.fill();
-                ctx.strokeStyle = "#121212";
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                ctx.strokeStyle = "#121212"; ctx.lineWidth = 2; ctx.stroke();
 
                 ctx.save();
-                ctx.translate(250, 250);
+                ctx.translate(350, 350);
                 ctx.rotate(startAngle + sliceAngle / 2);
                 ctx.fillStyle = "white";
                 ctx.textAlign = "right";
-                ctx.font = "bold 15px Arial";
+                ctx.font = "bold 20px Arial"; // Текст став більшим
                 ctx.shadowBlur = 4; ctx.shadowColor = "black";
-                ctx.fillText(lot.name, 230, 5);
+                ctx.fillText(lot.name, 320, 8);
                 ctx.restore();
 
                 startAngle += sliceAngle;
@@ -290,61 +314,44 @@
 
         function spin() {
             if (lots.length < 2 || isProcessing) return;
-            
-            isProcessing = true; 
-            spinBtn.disabled = true; 
-            statusMsg.innerText = "Колесо обертається...";
-            statusMsg.className = "";
+            isProcessing = true;
+            spinBtn.disabled = true;
+            statusMsg.innerText = "Крутимо...";
 
             const extraDegrees = Math.floor(Math.random() * 360) + 3600; 
             currentRotation += (extraDegrees * Math.PI) / 180;
-            
-            // Запуск анімації через CSS
             canvas.style.transform = `rotate(-${currentRotation}rad)`;
 
-            // Очікування завершення "в'язкої" анімації (9 секунд + 200мс запас)
             setTimeout(() => {
-                determineWinner();
-            }, 9200);
-        }
+                const inverseTotal = lots.reduce((sum, l) => sum + (1 / l.val), 0);
+                let normalizedRotation = (currentRotation) % (2 * Math.PI);
+                let currentAngle = 0;
 
-        function determineWinner() {
-            const inverseTotal = lots.reduce((sum, l) => sum + (1 / l.val), 0);
-            let normalizedRotation = (currentRotation) % (2 * Math.PI);
-            let currentAngle = 0;
-
-            for (let i = 0; i < lots.length; i++) {
-                const sliceAngle = ((1 / lots[i].val) / inverseTotal) * 2 * Math.PI;
-                if (normalizedRotation >= currentAngle && normalizedRotation < currentAngle + sliceAngle) {
-                    const eliminatedName = lots[i].name;
-                    statusMsg.innerHTML = `Вибуває: <span class="eliminated">${eliminatedName}</span>`;
-                    statusMsg.className = "eliminated";
-
-                    // Пауза перед видаленням
-                    setTimeout(() => {
-                        lots.splice(i, 1);
-                        save();
-                        
-                        if (lots.length === 1) {
-                            statusMsg.innerHTML = `👑 ПЕРЕМОЖЕЦЬ: <span class="winner-text">${lots[0].name}</span>`;
-                            statusMsg.className = "winner-text";
-                            spinBtn.disabled = true;
-                        } else {
-                            statusMsg.innerText = "Готові до наступного раунду";
-                            isProcessing = false; 
-                            spinBtn.disabled = false; 
-                        }
-                    }, 2500);
-                    break;
+                for (let i = 0; i < lots.length; i++) {
+                    const sliceAngle = ((1 / lots[i].val) / inverseTotal) * 2 * Math.PI;
+                    if (normalizedRotation >= currentAngle && normalizedRotation < currentAngle + sliceAngle) {
+                        statusMsg.innerHTML = `Вибуває: <span class="eliminated">${lots[i].name}</span>`;
+                        setTimeout(() => {
+                            lots.splice(i, 1);
+                            save();
+                            if (lots.length === 1) {
+                                statusMsg.innerHTML = `👑 ПЕРЕМОЖЕЦЬ: <span class="winner-text">${lots[0].name}</span>`;
+                            } else {
+                                statusMsg.innerText = "Наступний раунд";
+                                isProcessing = false;
+                                spinBtn.disabled = false;
+                            }
+                        }, 2500);
+                        break;
+                    }
+                    currentAngle += sliceAngle;
                 }
-                currentAngle += sliceAngle;
-            }
+            }, 9200);
         }
 
         window.onload = () => {
             setRandomColor();
             save();
-            if (lots.length < 2) spinBtn.disabled = true;
         };
     </script>
 </body>
